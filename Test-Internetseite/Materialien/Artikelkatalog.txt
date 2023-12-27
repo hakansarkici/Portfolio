@@ -1,0 +1,9 @@
+Bademantel (Größe, Farbe, Preis, Beschreibung)
+Badehose (Größe, Farbe, Preis, Beschreibung)
+Schwimmflügel (Preis, Beschreibung)
+Gutschein (Preis, Dauer (2 Stunden, 4 Stunden, 6 Stunden, ganzer Tag), Beschreibung, Freier Text)
+Massage (Art (Rücken, Fuß, Kopf, Peeling, Ganzkörperpackung, ...), Dauer, Preis, Beschreibung)
+Sekt mit Firmenlogo (Preis, Beschreibung)#
+Lounges Trauminsel (Preis, Beschreibung)
+Lounge Family Relax Egg:  (Preis, Beschreibung)
+Peelingsalz Mango (Menge, Beschreibung, Preis)
