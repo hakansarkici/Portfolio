@@ -1,0 +1,31 @@
+DELIMITER //
+
+CREATE TRIGGER trig_kundenstatus
+  AFTER INSERT
+  ON tblauftraege FOR EACH ROW
+BEGIN
+
+  DECLARE Auftragsmenge INT;
+  DECLARE IstStammkunde tinyint(1);
+
+  SELECT Stammkunde INTO IstStammkunde
+    FROM tblkunden
+    WHERE KundenID = New.tblKunden_KundenID;
+
+  IF IstStammkunde = 0 THEN
+
+    SELECT COUNT(AuftragsNr) INTO Auftragsmenge
+      FROM tblauftraege
+      WHERE tblKunden_KundenID = New.tblKunden_KundenID;
+
+    IF Auftragsmenge > 3 THEN
+
+      UPDATE tblkunden
+        SET Stammkunde = 1
+        WHERE KundenID = New.tblKunden_KundenID;
+
+    END IF;
+  END IF;
+END//
+
+DELIMITER ; 
