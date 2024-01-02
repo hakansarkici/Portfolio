@@ -1,0 +1,109 @@
+-- Erstellen der Tabelle für Artikel
+CREATE TABLE Artikel (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    kategorie VARCHAR(50) NOT NULL,
+    menge INT NOT NULL,
+    preis DECIMAL(10, 2) NOT NULL
+);
+
+-- Einfügen von 20 Beispieldaten für Artikel
+INSERT INTO Artikel (name, kategorie, menge, preis) VALUES
+('Chlor', 'Reinigung', 100, 5.99),
+('Reinigungsmittel A', 'Reinigung', 50, 8.99),
+('Merchandise-Artikel X', 'Merchandise', 30, 15.50),
+('Essen Produkt 1', 'Lebensmittel', 200, 2.49),
+('Getränk A', 'Getränke', 120, 1.99),
+('Elektronik-Reiniger', 'Reinigung', 25, 9.99),
+('Küchenrolle', 'Haushalt', 150, 3.99),
+('T-Shirt Schwarz', 'Bekleidung', 50, 12.99),
+('Müsli', 'Lebensmittel', 80, 4.99),
+('Mineralwasser', 'Getränke', 200, 0.99),
+('Glasreiniger', 'Reinigung', 40, 6.99),
+('Schokolade', 'Lebensmittel', 100, 1.49),
+('Kaffeebohnen', 'Lebensmittel', 60, 8.49),
+('Turnschuhe', 'Schuhe', 30, 29.99),
+('Laptop-Tasche', 'Elektronik', 20, 19.99),
+('Wolldecke', 'Heimtextilien', 15, 24.99),
+('Handdesinfektionsmittel', 'Hygiene', 50, 3.49),
+('Batterien', 'Elektronik', 100, 1.79),
+('Tomatensauce', 'Lebensmittel', 120, 1.29),
+('Bluetooth-Lautsprecher', 'Elektronik', 10, 39.99),
+('Schnittblumenstrauß', 'Blumen', 5, 14.99),
+('Nudeln', 'Lebensmittel', 180, 0.89),
+('Sonnenbrille', 'Accessoires', 25, 9.99);
+
+
+-- Erstellen der Tabelle für Dienstleistungen
+CREATE TABLE Dienstleistungen (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    kategorie VARCHAR(50) NOT NULL,
+    preis DECIMAL(10, 2) NOT NULL
+);
+
+-- Einfügen von 20 Beispieldaten für Dienstleistungen
+INSERT INTO Dienstleistungen (name, kategorie, preis) VALUES
+('Massage Basic', 'Wellness', 39.99),
+('Reinigungsservice', 'Reinigung', 89.99),
+('Wartung durch TÜV', 'Wartung', 129.99),
+('Personal Training', 'Fitness', 49.99),
+('Event Planung', 'Veranstaltungen', 199.99),
+('Computer Wartung', 'IT-Services', 79.99),
+('Gartenpflege', 'Haus und Garten', 59.99),
+('Buchführungsservice', 'Bürodienstleistungen', 109.99),
+('Fotografie', 'Kunst und Kultur', 69.99),
+('Beratungsdienstleistung', 'Beratung', 79.99),
+('Schädlingsbekämpfung', 'Haus und Garten', 49.99),
+('Übersetzungsservice', 'Sprachdienstleistungen', 89.99),
+('Catering', 'Veranstaltungen', 149.99),
+('Haustierbetreuung', 'Haustiere', 29.99),
+('Webdesign', 'IT-Services', 119.99),
+('Fitnesskurs', 'Fitness', 29.99),
+('Autopflege', 'Fahrzeugdienstleistungen', 69.99),
+('Schuhreparatur', 'Handwerksdienstleistungen', 19.99),
+('Frisördienstleistungen', 'Schönheit und Pflege', 49.99),
+('Energieberatung', 'Beratung', 99.99),
+('Malerservice', 'Handwerksdienstleistungen', 79.99),
+('Musikunterricht', 'Kunst und Kultur', 59.99),
+('Schneiderdienstleistungen', 'Handwerksdienstleistungen', 39.99);
+
+
+
+-- Erstellen der Tabelle für Lager
+CREATE TABLE Lager (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    groesse VARCHAR(50) NOT NULL,
+    lagerplatz VARCHAR(50) NOT NULL,
+    inhalt VARCHAR(255) NOT NULL,
+    stuecke INT NOT NULL,
+    mindestbestand INT,
+    lieferant VARCHAR(255),
+    letztes_lieferdatum DATE,
+    letzte_inventur DATE,
+    bemerkung TEXT
+);
+
+-- Einfügen von Beispieldaten für Lager mit Artikeln
+INSERT INTO Lager (name, groesse, lagerplatz, inhalt, stuecke, mindestbestand, lieferant, letztes_lieferdatum, letzte_inventur, bemerkung) VALUES
+('Lager 1', 'Groß', 'Regal A', 'Reinigungsprodukte', 500, 50, 'Lieferant1', '2023-01-10', '2023-03-15', 'Wichtige Reinigungsprodukte'),
+('Lager 1', 'Groß', 'Regal B', 'Lebensmittel', 300, 30, 'Lieferant2', '2023-02-05', '2023-04-20', 'Saisonale Lebensmittel'),
+('Lager 2', 'Mittel', 'Regal C', 'Elektronik', 200, 20, 'Lieferant3', '2023-03-20', '2023-05-10', 'Elektronische Geräte'),
+('Lager 2', 'Mittel', 'Regal D', 'Bekleidung', 1000, 100, 'Lieferant4', '2023-04-15', '2023-06-25', 'Verschiedene Bekleidungsartikel'),
+('Lager 3', 'Klein', 'Schrank E', 'Getränke', 150, 15, 'Lieferant5', '2023-05-01', '2023-07-12', 'Erfrischungsgetränke'),
+('Lager 3', 'Klein', 'Schublade F', 'Hygieneartikel', 400, 40, 'Lieferant6', '2023-06-10', '2023-08-18', 'Persönliche Hygieneartikel'),
+('Lager 4', 'Mittel', 'Regal G', 'Sportartikel', 200, 20, 'Lieferant7', '2023-07-05', '2023-09-02', 'Sportausrüstung'),
+('Lager 4', 'Mittel', 'Regal H', 'Büromaterial', 800, 80, 'Lieferant8', '2023-08-20', '2023-10-15', 'Bürobedarf'),
+('Lager 5', 'Klein', 'Schrank I', 'Haushaltswaren', 300, 30, 'Lieferant9', '2023-09-15', '2023-11-08', 'Haushaltsbedarf'),
+('Lager 5', 'Klein', 'Schublade J', 'Dekorationsartikel', 100, 10, 'Lieferant10', '2023-10-01', '2023-12-20', 'Dekorationsgegenstände');
+
+-- Einfügen von Beispieldaten für Lager mit Dienstleistungen
+INSERT INTO Lager (name, groesse, lagerplatz, inhalt, stuecke, mindestbestand, lieferant, letztes_lieferdatum, letzte_inventur, bemerkung) VALUES
+('Lager 6', 'Mittel', 'Regal K', 'Massage Basic', 10, NULL, 'Wellness-Salon', NULL, NULL, 'Entspannende Massage'),
+('Lager 7', 'Groß', 'Regal L', 'Reinigungsservice', 5, NULL, 'Reinigungsunternehmen', NULL, NULL, 'Professionelle Reinigung'),
+('Lager 8', 'Mittel', 'Regal M', 'Wartung durch TÜV', 3, NULL, 'TÜV-Zertifizierung', NULL, NULL, 'Technische Überprüfung'),
+-- Weitere Beispieldaten für Lager mit Dienstleistungen einfügen ...
+('Lager 9', 'Klein', 'Schrank N', 'Personal Training', 8, NULL, 'Fitnessstudio', NULL, NULL, 'Individuelles Training'),
+('Lager 10', 'Klein', 'Schublade O', 'Event Planung', 2, NULL, 'Eventagentur', NULL, NULL, 'Planung und Organisation von Events'),
+('Lager 11', 'Mittel', 'Regal P', 'Computer Wartung', 4, NULL, 'IT-Service', NULL, NULL, 'Wartung von Computern');

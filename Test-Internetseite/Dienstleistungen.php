@@ -313,12 +313,13 @@
                                         <!-- Rights-->
                                         <p class="rights"><span>&copy;&nbsp;</span><span
                                                 class="copyright-year"></span>
-                                            <span>Gruppe-2</span>
+                                            <span>Hakan Sarkici
+                                            </span>
                                         </p>
                                     </div>
                                     <div class="col-sm-6 col-md-4 text-md-right"><span>All
                                             rights reserved.</span> <span>Design&nbsp;by&nbsp;<a
-                                                href="https://www.google.de">Projekt-Gruppe-2</a></span>
+                                                href="https://www.google.de">Hakan Sarkici</a></span>
                                     </div>
                                 </div>
                             </div>
