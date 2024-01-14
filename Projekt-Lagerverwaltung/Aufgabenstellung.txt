@@ -1,5 +1,8 @@
 
-Für die Verwaltung der gekauften Artikel und Dienstleistungen soll ein internes Warenwirtschaftssystem entwickelt werden. Neben der Verwaltung von unterschiedlichen Artikel (Chlor, Reinigungsmittel, Merchandise-Artikel, Essen, Getränke) sollen auch Dienstleistungen (Massage, Reinigung, Wartung durch TÜV etc.) verwaltet werden können.
+Für die Verwaltung der gekauften Artikel und Dienstleistungen soll 
+ein internes Warenwirtschaftssystem entwickelt werden. Neben der Verwaltung von 
+unterschiedlichen Artikel (Chlor, Reinigungsmittel, Merchandise-Artikel, Essen, 
+Getränke) sollen auch Dienstleistungen (Massage, Reinigung, Wartung durch TÜV etc.) verwaltet werden können.
 Folgende grundlegende Funktionen sind angedacht:
 
 Verwaltung von unterschiedlichen Artikel und Dienstleistungen inkl. deren Eigenschaften
@@ -10,4 +13,6 @@ Verwaltung von Lagerplätzen
 Erstellung von Rechnungen
 Auswertungen der Einkäufe und Verkäufe
 Lagerverwaltung
-Der Kunde wünscht sich am Ende der Projektwoche einen Prototyp mit exemplarischer Darstellung grundlegender Funktion. Eine plattformunabhängige Anwendung ist nicht notwendig!
+Der Kunde wünscht sich am Ende der Projektwoche einen Prototyp mit 
+exemplarischer Darstellung grundlegender Funktion. 
+Eine plattformunabhängige Anwendung ist nicht notwendig!
