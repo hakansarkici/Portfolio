@@ -1,0 +1,263 @@
+package developer.hakan;
+ 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+ 
+import javax.activation.DataHandler;
+import javax.activation.DataSource;
+import javax.activation.FileDataSource;
+import javax.mail.BodyPart;
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Multipart;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
+ 
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+ 
+import abas.HHFunc;
+import ajo.AbstractAjoAccess;
+import de.abas.erp.api.gui.TextBox;
+import de.abas.erp.db.DbContext;
+import hibernate.HHHibernate;
+import hibernate.oracle.auftrag.ETAuftrag;
+ 
+public class ETB extends AbstractAjoAccess {
+//zieht sich Informationen aus der Oracle-Datenbank und schreibt sie in eine Excel-Tabelle, und schickt sie dann per Mail weg
+ 
+      DbContext ctx;
+ 
+      public int run(String[] args) {
+ 
+            ctx = getDbContext();
+            ctx.out().println("Verbindung zu Oracle wird aufgebaut..");
+            HHHibernate hib = new HHHibernate(ctx);
+            hib.addClass(ETAuftrag.class);
+            String AnfangDatum;
+ 
+            AnfangDatum = HHFunc.Eingabe("Bitte Anfangsdatum wie zum eispiel 2023-08-28 eingeben:");
+            String EndDatum = HHFunc.Eingabe("Bitte Enddatum wie zum Beispiel 2023-09-02 eingeben:");
+ 
+            String excelFilePath = "/erp/abas/demo/test/ETBAbfragen/test.xls";
+ 
+            Map<String, String> hashMap = null;
+            hashMap = new HashMap<>();
+            this.hashfill(hashMap, AnfangDatum, EndDatum);
+           
+ 
+            for (Map.Entry<String, String> entry : hashMap.entrySet()) {
+ 
+                  if (entry.getKey().startsWith("where verpackt >=")) {
+                        excelFilePath = "/erp/abas/demo/test/ETBAbfragen/Letzte Woche verpackte ETB (bzw Zeitraum verpackt)" + EndDatum + ".xlsx";
+                  } else if (entry.getKey().startsWith("where eingang >=")) {
+                        excelFilePath = "/erp/abas/demo/test/ETBAbfragen/Alle noch nicht ausgelieferten ETB Vorlauf" + EndDatum + ".xlsx";
+                  } else if (entry.getKey().startsWith("where lieferung >=")) {
+                        excelFilePath = "/erp/abas/demo/test/ETBAbfragen/Letzte Woche gelieferte ETB (bzw Zeitraum geliefert)" + EndDatum + ".xlsx";
+                  } else if (entry.getKey().startsWith("where eingang_au >=")) {
+                        excelFilePath = "/erp/abas/demo/test/ETBAbfragen/Letzte Woche eingegangene ETB (bzw Zeitraum eingegangen)" + EndDatum + ".xlsx";
+                  } else {
+                        TextBox textBox = new TextBox(ctx, "Test Fehler", "Fehler, Bitte an die IT wenden nichts ausgewählt");
+                        textBox.show();
+                  }
+ 
+                  ctx.out().println(entry.getKey());
+ 
+                  try {
+                        hib.openSchema("HHNG_AU", true);
+ 
+                        Workbook workbook = null;
+                        workbook = new XSSFWorkbook();
+                        Sheet sheet = null;
+                        sheet = workbook.createSheet("Data");
+ 
+                        String sSqlPro = "select etauftrag from ETAuftrag as etauftrag " + entry.getKey();
+ 
+                        @SuppressWarnings("unchecked")
+                        List<ETAuftrag> dateien = null;
+                        dateien = hib.session.createQuery(sSqlPro).list();
+ 
+                        int rowNumber = 0;
+                        for (ETAuftrag auftrag : dateien) {
+                              if (auftrag.equals(null) || auftrag == null)
+                                   continue;
+                              Row row = sheet.createRow(rowNumber++);
+                              int cellNumber = 0;
+                              row.createCell(cellNumber++).setCellValue(auftrag.getBestnr());
+                              row.createCell(cellNumber++).setCellValue(auftrag.getKommission());
+ 
+                              if (entry.getKey().startsWith("where eingang >=")) {
+                                    row.createCell(cellNumber++).setCellValue(auftrag.getChecked());
+                              }
+ 
+                              if (auftrag.getBestnr_au() == null || auftrag.getBestnr_au().equals(null)) {
+                                   row.createCell(cellNumber++).setCellValue(" ");
+                              } else {
+                                    row.createCell(cellNumber++).setCellValue(auftrag.getBestnr_au());
+                              }
+ 
+                              row.createCell(cellNumber++).setCellValue(auftrag.getPaketnr());
+                              row.createCell(cellNumber++).setCellValue(auftrag.getSachnummer());
+                              row.createCell(cellNumber++).setCellValue(auftrag.getAbasnr());
+                              row.createCell(cellNumber++).setCellValue(auftrag.getErsatzteil());
+                              row.createCell(cellNumber++).setCellValue(auftrag.getKatalogname());
+                              row.createCell(cellNumber++).setCellValue(String.valueOf(auftrag.getStueck()));
+                              row.createCell(cellNumber++).setCellValue(String.valueOf(auftrag.getEingang()));
+                              row.createCell(cellNumber++).setCellValue(String.valueOf(auftrag.getEingang_au()));
+                              row.createCell(cellNumber++).setCellValue(auftrag.getVersandart());
+                              row.createCell(cellNumber++).setCellValue(auftrag.getLager());
+                              row.createCell(cellNumber++).setCellValue(String.valueOf(auftrag.getVerpackt()));
+                              row.createCell(cellNumber++).setCellValue(String.valueOf(auftrag.getLieferung()));
+                              row.createCell(cellNumber++).setCellValue(String.valueOf(auftrag.getStorno_au()));
+                              row.createCell(cellNumber++).setCellValue(auftrag.getWerk());
+                              row.createCell(cellNumber++).setCellValue(auftrag.getEtkategorie());
+                        }
+ 
+                        try (FileOutputStream outputStream = new FileOutputStream(excelFilePath)) {
+                              workbook.write(outputStream);
+                              ctx.out().println("Daten wurden erfolgreich in die Excel-Tabelle geschrieben.");
+                        } catch (Exception e) {
+                              e.printStackTrace();
+                        }
+                        hib.transaction.commit();
+                  } catch (Exception e) {
+                        ctx.out().println("Fehler " + e.getMessage());
+                        hib.rollback();
+                        throw e;
+                  } finally {
+                        hib.close();
+                  }
+            }
+           
+           
+           
+            ctx.out().println("Das Programm wird für 2 sekunden Pausiert.");
+            this.Pause();
+       
+            ctx.out().println("Das Programm ist wieder aktiv!");
+       
+            ctx.out().println("Sende Dateien als Mail");
+            this.MailSenden();
+           
+            ctx.out().println("Das Programm wird für 2 sekunden Pausiert.");
+            this.Pause();
+       
+            ctx.out().println("Das Programm ist wieder aktiv!");
+            this.loeschen();
+           
+            ctx.out().println("Ende");
+ 
+            return 0;
+      }
+     
+      private Map<String, String> hashfill(Map<String, String> hashMap, String AnfangDatum, String EndDatum){
+           
+            hashMap.put("where verpackt >= '" + AnfangDatum + "' and verpackt <= '" + EndDatum + "' order by bestnr", "Letzte Woche verpackte ETB (bzw. Zeitraum verpackt)");
+            hashMap.put("where eingang >= '2022-01-01' and stueck > 0 and (checked = 'J' OR CHECKED = 'j') and STORNO_AU IS null and LIEFERUNG IS null AND ERSATZTEIL NOT LIKE '%D' AND Eingang_AU IS NOT NULL order by bestnr", "alle noch nicht ausgelieferten ETB Vorlauf");
+            hashMap.put("where lieferung >= '" + AnfangDatum + "' and lieferung <= '" + EndDatum + "' order by bestnr", "Letzte Woche gelieferte ETB (bzw. Zeitraum geliefert)");
+            hashMap.put("where eingang_au >= '" + AnfangDatum + "' and eingang_au <= '" + EndDatum + "' order by bestnr", "Letzte Woche eingegangene ETB (bzw. Zeitraum eingegangen)");
+           
+            return hashMap;
+      }
+     
+      private void Pause(){
+            try {
+            // Programm für 10 Sekunden anhalten (10000 Millisekunden)
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            // Diese Ausnahme tritt auf, wenn der Thread während des Schlafens unterbrochen wird
+            e.printStackTrace();
+        }
+      }
+     
+      private void MailSenden(){
+           
+ 
+//          String to = "sarkici@heimhaus.de";
+            String to = "juers@heimhaus.de";
+            String from = "edvau@heimhaus.de";
+            String host = "192.168.0.28";
+ 
+            Properties properties = System.getProperties();
+ 
+            properties.setProperty("mail.smtp.host", host);
+ 
+            Session session = Session.getDefaultInstance(properties);
+ 
+            try {
+                Message message = new MimeMessage(session);
+                message.setFrom(new InternetAddress(from));
+                message.addRecipient(Message.RecipientType.TO, new InternetAddress(to));
+//              message.addRecipient(Message.RecipientType.TO, new InternetAddress(to2));
+                message.setSubject("ETB-Abfragen");
+ 
+                Multipart multipart = new MimeMultipart();
+ 
+                // Textnachricht hinzufügen
+                BodyPart messageBody = new MimeBodyPart();
+                messageBody.setText("Dies ist eine automatisch generierte E-Mail. Bitte antworten Sie nicht auf diese Nachricht.");
+                multipart.addBodyPart(messageBody);
+ 
+                // Excel-Dateien aus dem Verzeichnis lesen und als Anhänge hinzufügen
+                File directory = new File("/erp/abas/demo/test/ETBAbfragen");
+                File[] files = directory.listFiles();
+                if (files != null) {
+                    for (File file : files) {
+                        if (file.isFile() && file.getName().endsWith(".xlsx")) {
+                            BodyPart attachment = new MimeBodyPart();
+                            DataSource source = new FileDataSource(file.getAbsolutePath());
+                            attachment.setDataHandler(new DataHandler(source));
+                            attachment.setFileName(file.getName());
+                            multipart.addBodyPart(attachment);
+                        }
+                    }
+                }
+ 
+                message.setContent(multipart);
+                Transport.send(message);
+            } catch (MessagingException e) {
+                ctx.out().println(e.getMessage());
+            }
+           
+            return;
+      }
+     
+     
+      private void loeschen(){
+           
+            File verzeichnis = new File("/erp/abas/demo/test/ETBAbfragen");
+           
+            if (verzeichnis.exists() && verzeichnis.isDirectory()) {
+            // Liste der Dateien im Verzeichnis abrufen
+            File[] dateien = verzeichnis.listFiles();
+           
+            if (dateien != null) {
+                for (File datei : dateien) {
+                    // Datei löschen
+                    if (datei.delete()) {
+                        System.out.println("Datei gelöscht: " + datei.getName());
+                    } else {
+                        System.out.println("Fehler beim Löschen der Datei: " + datei.getName());
+                    }
+                }
+            } else {
+                System.out.println("Das Verzeichnis ist leer.");
+            }
+        } else {
+            System.out.println("Das Verzeichnis existiert nicht.");
+        }
+           
+            return;
+      }
+     
+}

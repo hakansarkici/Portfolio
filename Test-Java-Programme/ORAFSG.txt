@@ -1,0 +1,66 @@
+package developer.hakan;
+ 
+import java.nio.charset.StandardCharsets;
+ 
+import ajo.AbstractAjoAccess;
+import java.util.List;
+ 
+import abas.HHFunc;
+import de.abas.erp.api.gui.TextBox;
+import de.abas.erp.db.DbContext;
+import hibernate.FSG_TEXTDATEI;
+import hibernate.HHHibernate;
+ 
+public class ORAFSG extends AbstractAjoAccess {
+    //Ließt Textdateien, die in die Oracle-Datenbank hochgeladen wurden aus und zeigt sie in einem TextBox-Fenster in Abas
+ 
+    DbContext ctx;                                                                            // 1569433
+ 
+    public int run(String[] args) {
+        ctx = getDbContext();
+        ctx.out().println("Verbindung zu Oracle wird aufgebaut..");
+        HHHibernate hib = new HHHibernate(ctx);
+        hib.addClass(FSG_TEXTDATEI.class);
+        String Eingabe;
+       
+        boolean inputIsValid = false;
+        do{
+               Eingabe = HHFunc.Eingabe("Bitte Auftragsnummer eingeben:");
+               if (Eingabe.matches("\\d+")) { // Überprüfung, ob die Eingabe aus Zahlen besteht
+                inputIsValid = true;
+                ctx.out().println("Du hast die Zahl " + Eingabe + " eingegeben");
+            } else {
+              TextBox textBox = new TextBox(ctx, "Fehler!!", "Ungültige Eingabe. Bitte gib nur Zahlen ein.");
+                              textBox.show();
+            }
+        } while (!inputIsValid);
+ 
+        try {
+            hib.openSchema("HHNG_AU", true);
+ 
+            String sSqlPro = "SELECT datei FROM FSG_TEXTDATEI as datei where auftrag = '"+Eingabe+"'";
+            List<FSG_TEXTDATEI> dateien = hib.session.createQuery(sSqlPro).list();
+ 
+            for (FSG_TEXTDATEI datei : dateien) {
+                byte[] fileData = datei.getDatei();
+                String fileContent = new String(fileData, StandardCharsets.UTF_8);
+ 
+                ctx.out().println("File Content:");
+                ctx.out().println(fileContent);
+                TextBox textBox = new TextBox(ctx, "Inhalt Test", fileContent);
+                              textBox.show();
+            }
+ 
+            hib.transaction.commit();
+        } catch (Exception e) {
+            ctx.out().println("Fehler " + e.getMessage());
+            hib.rollback();
+            throw e;
+        } finally {
+            hib.close();
+        }
+        ctx.out().println("Ende");
+ 
+        return 0;
+    }
+}

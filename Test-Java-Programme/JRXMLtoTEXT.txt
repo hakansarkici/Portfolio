@@ -1,0 +1,189 @@
+package developer.hakan;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.DocumentBuilder;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+ 
+import abas.HHFunc;
+import ajo.AbstractAjoAccess;
+import de.abas.erp.api.gui.MenuBuilder;
+import de.abas.erp.api.gui.TextBox;
+import de.abas.erp.db.DbContext;
+ 
+import java.io.File;
+import java.io.FileWriter;
+ 
+//Tool zur automatischen generation einer Java-Klasse für ein Jasper-Report
+//änderungen müssen noch vorgenommen werden und input mit Filename
+ 
+public class JRXMLToText extends AbstractAjoAccess{
+                DbContext ctx;
+               
+                @Override
+                public int run(String[] args) {
+                               ctx = getDbContext();
+                              
+                               TextBox textBox = new TextBox(ctx, "JRXMLToText", "Erstellt eine Textdatei aus einer JRXML-Datei, "
+                                                               + "extrahiert die \nKlassen- und Variablentypen und generiert automatisch Getter und Setter, "
+                                                               + "\nwelcher dann im Verzeichnis K:/demo/win/jasper/JRXMLToText abgelegt wird.");
+                               textBox.show();
+                              
+                               MenuBuilder<String> menuBuilder = new MenuBuilder<String>(ctx, "Bitte Mandant auswählen");
+                               createMenu(menuBuilder);
+                               String select = menuBuilder.show();
+                               String selectOrdner = null;
+                              
+                               if(select.equals("/demo"))
+                               {
+                                               MenuBuilder<String> menuBuilderdemo = new MenuBuilder<String>(ctx, "Bitte Ordner Wählen");
+                                               createMenudemo(menuBuilderdemo);
+                                               selectOrdner = menuBuilderdemo.show();
+                               }
+                               else if (select.equals("/hh"))
+                               {
+                                               MenuBuilder<String> menuBuilderhh = new MenuBuilder<String>(ctx, "Bitte Ordner Wählen");
+                                               createMenuhh(menuBuilderhh);
+                                               selectOrdner = menuBuilderhh.show();
+                               }
+                               else if (select.equals("/rdf"))
+                               {
+                                               MenuBuilder<String> menuBuilderrdf = new MenuBuilder<String>(ctx, "Bitte Ordner Wählen");
+                                               createMenurdf(menuBuilderrdf);
+                                               selectOrdner = menuBuilderrdf.show();
+                               }else
+                               {
+                                               ctx.out().println("Schlecht gelaufen, Bratan!");
+                               }
+                              
+                               String Eingabe = HHFunc.Eingabe("Bitte Name des Reports eingaben:");
+ 
+                              
+                               try {
+                                               ctx.out().println("nach try");
+            // Lade die XML-Datei
+               String jrxmlFilePath = "/erp/abas" + select + "/win/jasper/layout/hhjasper/" + selectOrdner + "/" + Eingabe + ".jrxml";
+            File xmlFile = new File(jrxmlFilePath);
+           
+            ctx.out().println("jrxml gefunden");
+ 
+            // Parse die XML-Datei
+            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.parse(xmlFile);
+ 
+            // Erhalte die Wurzelelement des Dokuments
+            Element rootElement = doc.getDocumentElement();
+            String className = rootElement.getAttribute("name");
+ 
+            // Erzeuge den Java-Code für die Klasse
+            StringBuilder javaCode = new StringBuilder();
+            javaCode.append("public class ").append(className).append(" {\n\n");
+ 
+            // Extrahiere Informationen aus den <field>-Elementen
+            NodeList fieldList = doc.getElementsByTagName("field");
+            ctx.out().println("vor for-schleife");
+            for (int i = 0; i < fieldList.getLength(); i++) {
+                Element fieldElement = (Element) fieldList.item(i);
+                String fieldName = fieldElement.getAttribute("name");
+                String fieldType = fieldElement.getAttribute("class");
+                String trimmedFieldType = fieldType.substring(fieldType.lastIndexOf(".") + 1);
+               
+                // Generiere Getter und Setter für jedes Feld
+               
+                javaCode.append("    private ").append(trimmedFieldType).append(" ").append(fieldName).append(";\n");
+               
+            }
+            javaCode.append("\n\n");
+           
+            for (int i = 0; i < fieldList.getLength(); i++) {
+                Element fieldElement = (Element) fieldList.item(i);
+                String fieldName = fieldElement.getAttribute("name");
+                String fieldType = fieldElement.getAttribute("class");
+                String trimmedFieldType = fieldType.substring(fieldType.lastIndexOf(".") + 1);
+               
+                // Generiere Getter und Setter für jedes Feld
+               
+                javaCode.append("    public ").append(trimmedFieldType).append(" get").append(capitalize(fieldName)).append("() {\n");
+                javaCode.append("        return ").append(fieldName).append(";\n");
+                javaCode.append("    }\n\n");
+                javaCode.append("    public void set").append(capitalize(fieldName)).append("(").append(trimmedFieldType).append(" ").append(fieldName).append(") {\n");
+                javaCode.append("        this.").append(fieldName).append(" = ").append(fieldName).append(";\n");
+                javaCode.append("    }\n\n\n");
+            }
+ 
+            javaCode.append("}");
+ 
+            // Speichere den generierten Java-Code in einer Datei
+            String outputFileName = "/erp/abas" + select + "/win/jasper/layout/hhjasper" + selectOrdner + "/" + Eingabe + "_Generated.txt";
+            String Outputfilename = "/erp/abas/demo/win/jasper/JRXMLToText/" + Eingabe + "_Klasse.txt";
+            FileWriter writer = new FileWriter(Outputfilename);
+            writer.write(javaCode.toString());
+            writer.close();
+           
+ 
+            ctx.out().println("Textdatei für die Java-Klasse wurde erfolgreich generiert und in " + outputFileName + " gespeichert.");
+ 
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+                               return 0;
+    }
+ 
+    // Hilfsmethode zum Großschreiben des ersten Buchstabens
+    private static String capitalize(String str) {
+        return Character.toUpperCase(str.charAt(0)) + str.substring(1);
+    }
+   
+    private void createMenu(MenuBuilder<String> menuBuilder) {
+                               // das erste (vor dem Komma) ist später in select drinnen
+                               menuBuilder.addItem("/hh", "HH" );
+                               menuBuilder.addItem("/rdf", "RDF");
+                               menuBuilder.addItem("/demo", "DEMO");
+                }
+   
+    private void createMenudemo(MenuBuilder<String> menuBuilder) {
+               //alle Ordner die wir für den Demo-Mandanten haben
+                               menuBuilder.addItem("/dfr", "DFR");
+                               menuBuilder.addItem("/kuf", "KUF");
+                               menuBuilder.addItem("/markisen", "Markisen");
+                               menuBuilder.addItem("/mawi", "Mawi");
+                               menuBuilder.addItem("/rolladen", "Rolladen");
+                               menuBuilder.addItem("/teilstamm", "Teilstamm");
+                               menuBuilder.addItem("/versand", "Versand");
+                               menuBuilder.addItem("/Vorlagen", "Vorlagen");
+                               menuBuilder.addItem("/wgb", "WGB");
+                               menuBuilder.addItem("", "Kein Ordner");
+                }
+   
+    private void createMenuhh(MenuBuilder<String> menuBuilder) {
+                               //alle Ordner die wir für den HH_Mandanten haben
+                               menuBuilder.addItem("/dfr", "DFR");
+                               menuBuilder.addItem("/eteile", "E-Teile");
+                               menuBuilder.addItem("/GL", "GL");
+                               menuBuilder.addItem("/kuf", "Kuf");
+                               menuBuilder.addItem("/markisen", "Markisen");
+                               menuBuilder.addItem("/mawi", "Mawi");
+                               menuBuilder.addItem("/PGK", "PGK");
+                               menuBuilder.addItem("/praemie", "Praemie");
+                               menuBuilder.addItem("/QM", "QM");
+                               menuBuilder.addItem("/rolladen", "Rolladen");
+                               menuBuilder.addItem("/teilstamm", "Teilstamm");
+                               menuBuilder.addItem("/test", "Test");
+                               menuBuilder.addItem("/typenschild", "Typenschild");
+                               menuBuilder.addItem("/versand", "Versand");
+                               menuBuilder.addItem("/Vorlagen", "Vorlagen");
+                               menuBuilder.addItem("/wgb", "WGB");
+                               menuBuilder.addItem("", "Kein Ordner");
+                }
+   
+    private void createMenurdf(MenuBuilder<String> menuBuilder) {
+               //alle Ordner die wir für den RDF-Mandanten haben
+                               menuBuilder.addItem("/df", "DF");
+                               menuBuilder.addItem("/ht", "HT");
+                               menuBuilder.addItem("/praemie", "Praemie");
+                               menuBuilder.addItem("/vorlagen", "Vorlagen");
+                               menuBuilder.addItem("", "Kein Ordner");
+                }
+   
+}

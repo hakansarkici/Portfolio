@@ -1,0 +1,413 @@
+package developer.hakan.PostData;
+ 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.Duration;
+import java.time.Instant;
+ 
+import ajo.AbstractAjoAccess;
+import de.abas.erp.db.DbContext;
+ 
+public class DBFtoHelpText1 extends AbstractAjoAccess {
+//Vorbereitung der Textdateien und Anlegen der Datenbank
+ 
+                // Constants for file paths and names
+                private static final String PFAD = "demo/test/DBF_TEST";
+                private static final String DBF = "\"ht_adres.dbf\"";
+                private static final String Tabelle = "arch_ht";
+                private static final String Klasse = "HtData";
+                private static final String Outputfilename = "/erp/abas/demo/test/test_klasse.txt";
+                private static final Boolean CreateTable = true;   //soll Tabelle in Postgres erstellt werden?
+ 
+                private DbContext ctx = null;
+ 
+                @Override
+                public int run(String[] args) {
+                               // Get the database context
+                               ctx = getDbContext();
+ 
+                               // Record start time for performance measurement
+                               Instant start = Instant.now();
+ 
+                               // Method to handle SQL intermediate class creation
+                               sqlZwischenklasseErstellung();
+ 
+                               // Print the duration of the process
+                               ctx.out().println("Duration: " + Duration.between(start, Instant.now()));
+ 
+                               return 0;
+                }
+ 
+                // Method to handle SQL intermediate class creation
+                private void sqlZwischenklasseErstellung() {
+                               // SQL query to select data from DBF file
+                               String sStmt = "SELECT * FROM " + DBF + " WHERE komm = '8/177262 -os'";
+                               String pfad = "jdbc:jstels:dbf:/erp/abas/" + PFAD;
+                               StringBuilder sqlCreateStatement = new StringBuilder();
+ 
+                               try {
+                                               // Load the JDBC driver for DBF
+                                               Class.forName("jstels.jdbc.dbf.DBFDriver");
+                               } catch (ClassNotFoundException e) {
+                                               // Handle class not found exception
+                                               ctx.out().println(e.getMessage());
+                                               return;
+                               }
+ 
+                               String uebergabenametype = "";
+                               ctx.out().println("JDBC driver loaded");
+ 
+                               try (Connection connDB = DriverManager.getConnection(pfad); PreparedStatement psStmt = connDB.prepareStatement(sStmt); ResultSet rsDBF = psStmt.executeQuery()) {
+ 
+                                               // ResultSet metadata to get information about the columns
+                                               ResultSetMetaData metaData = rsDBF.getMetaData();
+                                               int columnCount = metaData.getColumnCount();
+                                               ctx.out().println("Generating SQL create statement for table " + Tabelle);
+                                               sqlCreateStatement.append("CREATE TABLE \"public\".").append(Tabelle).append(" (");
+                                               int zeilen = 0;
+ 
+                                               // Loop through columns to create the table schema
+                                               for (int i = 1; i <= columnCount; i++) {
+                                                               // Get column name and type
+                                                               String columnName = metaData.getColumnName(i) + " ";
+                                                               String columnType = metaData.getColumnTypeName(i);
+ 
+                                                               // Map DBF type to PostgreSQL type
+                                                               columnType = mapDBFTypeToPostgresType(columnType);
+ 
+                                                               // Append column details to the create statement
+                                                               if (i == columnCount) {
+                                                                               sqlCreateStatement.append(columnName).append(columnType);
+                                                               } else {
+                                                                               sqlCreateStatement.append(columnName).append(columnType).append(",");
+                                                               }
+                                                               zeilen++;
+                                               }
+                                               sqlCreateStatement.append(");");
+                                               ctx.out().println("Zeilen:    "+zeilen);
+ 
+                                               // Process the ResultSet and create the table in PostgreSQL
+                                               uebergabenametype = processResultSet(rsDBF);
+                                               FileWriter writer;
+                                               try {
+                                                               writer = new FileWriter("/erp/abas/demo/test/CreateStatement.txt");
+                                                               writer.write(sqlCreateStatement.toString());
+                                                               writer.close();
+                                               } catch (IOException e) {
+                                                               // TODO Auto-generated catch block
+                                                               e.printStackTrace();
+                                                               ctx.out().println(e);
+                                               }
+                                               createTable(ctx, sqlCreateStatement);
+ 
+                               } catch (Exception e) {
+                                               // Handle exceptions
+                                               ctx.out().println(e.getMessage());
+                               }
+ 
+                               // Generate dynamic class based on ResultSet metadata
+                               DynamicClassGenerator(ctx, uebergabenametype);
+ 
+                               ctx.out().println("Code generation completed");
+                }
+ 
+                // Map DBF column types to PostgreSQL types
+                private String mapDBFTypeToPostgresType(String dbfType) {
+                               // Switch statement to map DBF types to PostgreSQL types
+                               switch (dbfType) {
+                               case "INTEGER":
+                                               return "NUMERIC(10)";
+                               case "TIMESTAMP":
+                                               return "TIMESTAMP";
+                               case "VARCHAR":
+                                               return "VARCHAR(255)";
+                               case "DOUBLE":
+                                               return "NUMERIC(15,5)";
+                               case "BOOLEAN":
+                                               return "BOOLEAN";
+                               // Add more mappings as needed
+                               default:
+                                               ctx.out().println(dbfType);
+                                               return dbfType;
+                               }
+                }
+ 
+                // Method to create a table in PostgreSQL
+                private void createTable(DbContext ctx, StringBuilder createStatement) {
+                               // Connect to PostgreSQL database and execute the create table query
+                               if (CreateTable) {
+                                               String connPost = "jdbc:postgresql://192.168.6.129:5432/postgres";
+                                               try (Connection conn = DriverManager.getConnection(connPost, "postgres", "db2su")) {
+                                                               ctx.out().println("Connected to PostgreSQL.");
+ 
+                                                               String createTableQuery = createStatement.toString();
+ 
+                                                               try (Statement statement = conn.createStatement()) {
+                                                                               statement.executeUpdate(createTableQuery);
+                                                                               ctx.out().println("New table created in PostgreSQL.");
+                                                               } catch (SQLException e) {
+                                                                               e.printStackTrace();
+                                                                               ctx.out().print(e);
+                                                               } finally {
+                                                                               conn.close();
+                                                               }
+ 
+                                               } catch (SQLException e) {
+                                                               e.printStackTrace();
+                                                               ctx.out().print(e);
+                                               }
+                               }
+                }
+ 
+                // Method to process the ResultSet and generate class information
+                private String processResultSet(ResultSet rsDBF) throws SQLException {
+                               // Process ResultSet metadata and generate class information
+ 
+                               String uebergabenametype = "";
+                               ResultSetMetaData metaData = rsDBF.getMetaData();
+                               int columnCount = metaData.getColumnCount();
+ 
+                               for (int i = 1; i <= columnCount; i++) {
+                                               String columnName = metaData.getColumnName(i) + " ";
+                                               String columnType = metaData.getColumnTypeName(i);
+ 
+                                               // Mapping SQL types to Java types
+                                               // (consider using a map or switch statement for better
+                                               // maintainability)
+                                               if (columnType.equals("INTEGER"))
+                                                               columnType = "int";
+                                               else if (columnType.equals("TIMESTAMP"))
+                                                               columnType = "Timestamp";
+                                               else if (columnType.equals("VARCHAR"))
+                                                               columnType = "String";
+                                               else if (columnType.equals("BOOLEAN"))
+                                                               columnType = "Boolean";
+                                               else if (columnType.equals("DOUBLE"))
+                                                               columnType = "Double";
+ 
+                                               uebergabenametype = uebergabenametype + columnName + "." + columnType + ",";
+                               }
+ 
+                               return uebergabenametype;
+                }
+ 
+                // Method to generate a dynamic class template based on ResultSet metadata
+                public int DynamicClassGenerator(DbContext ctx, String uebergabe) {
+                               // Generate class template and write to file
+ 
+                               StringBuilder classTemplate = generateClassTemplate(uebergabe, ctx);
+ 
+                               FileWriter writer;
+                               try {
+                                               writer = new FileWriter(Outputfilename);
+                                               writer.write(classTemplate.toString());
+                                               writer.close();
+                               } catch (IOException e) {
+                                               // TODO Auto-generated catch block
+                                               e.printStackTrace();
+                                               ctx.out().println(e);
+                               }
+                               ctx.out().println("Ausgabe gedruckt");
+ 
+                               return 0;
+                }
+ 
+                // Method to generate a dynamic class template based on ResultSet metadata
+                private static StringBuilder generateClassTemplate(String input, DbContext ctx) {
+                               // Generate a dynamic class template based on the input metadata
+                               String[] variableDefinitions = input.split(",");
+                               StringBuilder classTemplate = new StringBuilder();
+                               classTemplate.append("public class ").append(Klasse).append(" {\n");
+                               Integer zaehler = 1;
+ 
+                               for (String variableDefinition : variableDefinitions) {
+                                               String[] parts = variableDefinition.split("\\.");
+                                               if (parts.length == 2) {
+                                                               String variableName = "value" + zaehler.toString();
+                                                               String variableType = parts[1];
+                                                               if (variableName.contains(";"))
+                                                                               variableName = variableName.replace(";", "");
+                                                               if (variableType.contains(";"))
+                                                                               variableType = variableType.replace(";", "");
+                                                               classTemplate.append("    private ").append(variableType).append(" ").append(variableName).append(";\n");
+                                                               zaehler++;
+                                               } else {
+                                                               ctx.out().println("Ungültige Eingabe für Variable: " + variableDefinition);
+                                               }
+                               }
+                               zaehler = 1;
+ 
+                               classTemplate.append("\n    public ").append(Klasse).append("(");
+ 
+                               for (String variableDefinition : variableDefinitions) {
+                                               String[] parts = variableDefinition.split("\\.");
+                                               if (parts.length == 2) {
+                                                               String variableName = "value" + zaehler.toString();
+                                                               String variableType = parts[1];
+                                                               if (variableName.contains(";"))
+                                                                               variableName = variableName.replace(";", "");
+                                                               if (variableType.contains(";"))
+                                                                               variableType = variableType.replace(";", "");
+                                                               classTemplate.append(variableType).append(" ").append(variableName).append(", ");
+                                                               zaehler++;
+                                               }
+                               }
+                               zaehler = 1;
+ 
+                               // Entferne das letzte ", " vom Konstruktor
+                               classTemplate.setLength(classTemplate.length() - 2);
+ 
+                               classTemplate.append(") {\n");
+ 
+                               // Setze Werte im Konstruktor
+                               for (String variableDefinition : variableDefinitions) {
+                                               String[] parts = variableDefinition.split("\\.");
+                                               if (parts.length == 2) {
+                                                               String variableName = "value" + zaehler.toString();
+                                                               if (variableName.contains(";"))
+                                                                               variableName = variableName.replace(";", "");
+                                                               if (variableName.contains(" ")) {
+                                                                               variableName = variableName.replace(" ", "");
+                                                                               if (variableName.contains(" ")) {
+                                                                                              variableName = variableName.replace(" ", "");
+                                                                               }
+                                                               }
+                                                               classTemplate.append("        this.").append(variableName).append(" = ").append(variableName).append(";\n");
+                                                               zaehler++;
+                                               }
+                               }
+                               zaehler = 1;
+ 
+                               classTemplate.append("    }\n");
+ 
+                               // Getter-Methoden hinzufügen
+                               for (String variableDefinition : variableDefinitions) {
+                                               String[] parts = variableDefinition.split("\\.");
+                                               if (parts.length == 2) {
+                                                               String variableName = "value" + zaehler.toString();
+                                                               if (variableName.contains(";")) {
+                                                                               variableName = variableName.replace(";", "");
+                                                               }
+                                                               if (variableName.contains(" ")) {
+                                                                               variableName = variableName.replace(" ", "");
+                                                                               if (variableName.contains(" ")) {
+                                                                                              variableName = variableName.replace(" ", "");
+                                                                               }
+                                                               }
+                                                               String getterMethodName = "get" + variableName.substring(0, 1).toUpperCase() + variableName.substring(1);
+                                                               classTemplate.append("\n    public ").append(parts[1]).append(" ").append(getterMethodName).append("() {\n");
+                                                               classTemplate.append("        return ").append(variableName).append(";\n");
+                                                               classTemplate.append("    }\n");
+                                                               zaehler++;
+                                               }
+                               }
+                              
+                               String Get = "    public static "+Klasse+" createDataObject(ResultSet rsDBF) throws SQLException { \n         return new "+Klasse+" (\n                          ";
+                               ctx.out().println(zaehler);
+                               Integer andererzaehler=1;
+ 
+                               for (String variableDefinition : variableDefinitions) {
+                                               String[] parts = variableDefinition.split("\\.");
+                                               if (parts.length == 2) {
+                                                               String variableType = parts[1];
+                                                               if (variableType.contains(";"))
+                                                                               variableType = variableType.replace(";", "");
+ 
+                                                               if (variableType.equals("int"))
+                                                                               variableType = "getInt(" + andererzaehler.toString() + ")";
+                                                               else if (variableType.equals("Timestamp"))
+                                                                               variableType = "getTimestamp(" + andererzaehler.toString() + ")";
+                                                               else if (variableType.equals("String"))
+                                                                               variableType = "getString(" + andererzaehler.toString() + ")";
+                                                               else if (variableType.equals("Boolean"))
+                                                                               variableType = "getBoolean(" + andererzaehler.toString() + ")";
+                                                               else if (variableType.equals("Double"))
+                                                                               variableType = "getDouble(" + andererzaehler.toString() + ")";
+                                                               andererzaehler++;
+ 
+                                                               if (zaehler == andererzaehler)
+                                                                               Get = Get + "rsDBF." + variableType;
+                                                               else
+                                                                               Get = Get + "rsDBF." + variableType + ", ";
+ 
+                                                               if (zaehler % 5 == 0) {
+                                                                               Get = Get + " \n                               ";
+                                                               }
+ 
+                                               } else {
+                                                               ctx.out().println("Ungültige Eingabe für Variable: " + variableDefinition);
+                                               }
+                               }
+                               Get = Get + "\n        );" + "\n     }";
+                               ctx.out().println(zaehler);
+                               classTemplate.append(Get);
+                               classTemplate.append("\n");
+                               classTemplate.append("\n");
+ 
+                               classTemplate.append("}\n");
+ 
+                               classTemplate.append("\n");
+                               classTemplate.append("\n");
+                               int lastIndex = variableDefinitions.length;
+                               andererzaehler = 1;
+ 
+                               classTemplate.append("\"INSERT INTO ").append(Tabelle).append(" ( ");
+                               for (String variableDefinition : variableDefinitions) {
+                                               String[] parts = variableDefinition.split("\\.");
+                                               if (parts.length == 2) {
+                                                               String variableName = parts[0].toLowerCase();
+                                                               if (variableName.contains(";"))
+                                                                               variableName = variableName.replace(";", "");
+                                                               if (variableName.contains(" "))
+                                                                               variableName = variableName.replace(" ", "");
+ 
+                                                               if (zaehler == andererzaehler) {
+                                                                               classTemplate.append(variableName).append(" ").append("\n").append("+\"");
+                                                               } else {
+                                                                               classTemplate.append(variableName).append(",").append(" ");
+                                                               }
+                                                               if (zaehler % 5 == 0) {
+                                                                               classTemplate.append("\" \n +\"");
+                                                               }
+ 
+                                               }
+                                               andererzaehler ++;
+                               }
+                               zaehler--;
+                               andererzaehler--;
+                               classTemplate.append(") VALUES (");
+                               for (int i = 1; i <= zaehler; i++) {
+                                               if (i == zaehler)
+                                                               classTemplate.append("? ");
+                                               else if (i % 15 == 0)
+                                                               classTemplate.append("?, ").append("\" \n +\"");
+                                               else
+                                                               classTemplate.append("?, ");
+                               }
+                               classTemplate.append(")\"; \n");
+                               classTemplate.append("\n");
+                               classTemplate.append("\n");
+                              
+ 
+                               for (int i = 1; i <= zaehler; i++) {
+                                               if(i%6==0)
+                                                               classTemplate.append("data.getValue").append(i).append("() \n");
+                                               else
+                                                               classTemplate.append("data.getValue"+i+"() + " );
+                                              
+                                               if (i==zaehler)
+                                                               classTemplate.append(");");
+        }
+                              
+                               zaehler = 1;
+                               return classTemplate;
+                }
+ 
+}

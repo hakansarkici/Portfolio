@@ -1,0 +1,265 @@
+package developer.hakan;
+ 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.Instant;
+import ajo.AbstractAjoAccess;
+import de.abas.erp.api.gui.MenuBuilder;
+import de.abas.erp.api.gui.TextBox;
+import de.abas.erp.db.DbContext;
+import hibernate.FSG_TEXTDATEI;
+import hibernate.HHHibernate;
+ 
+public class F97 extends AbstractAjoAccess {
+//lädt F97 Dateien als Textdatei in die Oracle-Datenbank hoch
+ 
+                DbContext ctx = null;
+ 
+                @Override
+                public int run(String[] args) {
+                               ctx = getDbContext();
+ 
+                               ctx.out().println("Start");
+ 
+                               this.F97toORA();
+ 
+                               ctx.out().println("Ende");
+ 
+                               return 0;
+                }
+ 
+                public void F97toORA() {
+ 
+                               String sDatei = ""; // Pfad
+                               String sPfad = "/erp/abas/demo/test/F97toORCLT/";
+                               Instant start = Instant.now();// zeit var von java
+                               Integer [] zahlenArray = {30,29};
+ 
+                               MenuBuilder<String> yearMenuBuilder = new MenuBuilder<>(ctx, "Bitte Jahr auswählen");
+                               createYearMenu(yearMenuBuilder, sPfad); // Automatisch Jahresordner
+                                                                                                                                                                                             // hinzufügen
+                               String selectedYear = yearMenuBuilder.show();
+ 
+                               if (selectedYear != null) {
+//                                           MenuBuilder<String> monthMenuBuilder = new MenuBuilder<>(ctx, "Bitte Monat auswählen");
+//                                           createMonthMenu(monthMenuBuilder, sPfad + selectedYear + "/"); // Automatisch
+//                                                                                                                                                                                                                                                                                                       // Monatsordner
+//                                                                                                                                                                                                                                                                                                       // hinzufügen
+//                                           String selectedMonth = monthMenuBuilder.show();
+//
+//                                           if (selectedMonth != null) {
+                                               for (Integer zahl : zahlenArray){
+//                                                           File datei = new File(sPfad + selectedYear + "/" + selectedMonth);
+                                                               File datei = new File(sPfad + selectedYear + zahl.toString() + "/");
+                                                               File[] dateien = datei.listFiles(); // Erweiterter Pfad, der die
+                                                                                                                                                                                                             // Dateien in eine Liste
+                                                                                                                                                                                                             // lädt
+ 
+                                                               int counter = 0;
+                                                               int counter2 = 0;
+ 
+                                                               HHHibernate hib = new HHHibernate(ctx);
+                                                               hib.addClass(FSG_TEXTDATEI.class); // verbindung zu
+                                                                                                                                                                                                             // Oracle
+                                                                                                                                                                                                             // testmandant
+                                                                                                                                                                                                             // tabelle
+                                                                                                                                                                                                             // FSG_Testdatei
+ 
+                                                               if (dateien.length <= 0) {
+                                                                               TextBox textBox = new TextBox(ctx, "Fehler", "Die .F97-Dateien können nicht aus der Zukunft geholt werden " + "\n oder die .F97-Dateien wurden noch nicht erstellt");
+                                                                               textBox.show();
+                                                               } else {
+                                                                               for (int i = 0; i < dateien.length; i++) { // Schleife durch
+                                                                                                                                                                                                                                                            // die Dateien
+                                                                                              counter += 1;
+                                                                                              sDatei = dateien[i].getName();
+                                                                                              ctx.out().println(sPfad + selectedYear + zahl.toString() + "/" + sDatei);
+                                                                                              ctx.out().println("Dateien im Ordner:                                 " + counter);
+ 
+                                                                                              if (sDatei.endsWith(".F97")) // nur wenn die Datei mit
+                                                                                                                                                                                                                            // .F97 endet, wird das
+                                                                                                                                                                                                                            // Programm durchgeführt
+                                                                                              {
+                                                                                                              Path pfad = Paths.get(sPfad + selectedYear + zahl.toString() + "/" + sDatei);
+                                                                                                              if (getNumberBeforeF97(pfad.getFileName().toString()) == 0) {
+                                                                                                                              continue;
+                                                                                                              } // wenn nicht von OS, L oder D, dann abbrechen
+ 
+                                                                                                              counter2 += 1;
+                                                                                                              ctx.out().println("tatsaechlich hochgeladen:                               " + counter2);
+                                                                                                              ctx.out().println("");
+ 
+                                                                                                              byte[] bytes = null;
+                                                                                                              try {
+                                                                                                                              bytes = Files.readAllBytes(pfad);
+                                                                                                              } catch (IOException e) {
+                                                                                                                              ctx.out().println(e.getMessage());
+                                                                                                              } // Datei wird Byte für Byte eingelesen und in eine
+                                                                                                                              // Variable gespeichert
+ 
+                                                                                                              try {
+                                                                                                                              hib.openSchema("HHNG_AU", false);
+                                                                                                                              FSG_TEXTDATEI FSG_text = new FSG_TEXTDATEI();
+ 
+                                                                                                                              if (getNumberBeforeF97(pfad.getFileName().toString()) == 2) {
+                                                                                                                                              FSG_text.setAuftrag(Integer.parseInt((pfad.getFileName().toString().replaceAll("\\D.F97", ""))));
+                                                                                                                              } else if (getNumberBeforeF97(pfad.getFileName().toString()) == 4) {
+                                                                                                                                              FSG_text.setAuftrag(Integer.parseInt((pfad.getFileName().toString().replaceAll("OS\\.F97", ""))));
+                                                                                                                              } else if (getNumberBeforeF97(pfad.getFileName().toString()) == 3) {
+                                                                                                                                              FSG_text.setAuftrag(Integer.parseInt((pfad.getFileName().toString().replaceAll("L\\.F97", ""))));
+                                                                                                                              } else {
+                                                                                                                                              continue;
+                                                                                                                              } // hier wird die Endung der Datei gelöscht,
+                                                                                                                                              // damit sie in die Datenbank passt.
+ 
+                                                                                                                              FSG_text.setVertrieb(getNumberBeforeF97(pfad.getFileName().toString()));
+                                                                                                                              FSG_text.setDatei(bytes);
+ 
+                                                                                                                              hib.session.saveOrUpdate(FSG_text); // Daten
+                                                                                                                                                                                                                                                                           // Speichern
+                                                                                                                                                                                                                                                                           // und
+                                                                                                                                                                                                                                                                           // übergeben
+                                                                                                                              hib.transaction.commit();
+                                                                                                                              hib.close();
+                                                                                                              } catch (Exception e) {
+                                                                                                                              ctx.out().println("Dauer neu: " + Duration.between(start, Instant.now()));
+                                                                                                                              ctx.out().println("Fehler " + e.getMessage());
+                                                                                                                              hib.close();
+                                                                                                                              hib.rollback();
+                                                                                                                              throw e;
+                                                                                                              }
+                                                                                              } else {
+                                                                                                              ctx.out().println("Fetter Fehler" + sPfad + selectedYear + zahl.toString() + "/" + sDatei);
+                                                                                              }
+ 
+                                                                               } // Hier den Pfad zu Ihrem Verzeichnis eintragen
+ 
+                                                                               // boolean erfolgreichGeloescht = Selbstmordattentat(sPfad +
+                                                                               // selectedYear + selectedMonth);
+                                                                               // //Selbstmordattentat
+                                                                               // if (erfolgreichGeloescht) {
+                                                                               // System.out.println("Verzeichnis wurde erfolgreich
+                                                                               // gelöscht.");
+                                                                               // } else {
+                                                                               // System.out.println("Fehler beim Löschen des
+                                                                               // Verzeichnisses.");
+                                                                               // }
+                                                                               //
+                                                               }
+                                               }
+                               }
+                               ctx.out().println("Dauer neu: " + Duration.between(start, Instant.now()));// ausgabe
+                                                                                                                                                                                                                                                                                                                                          // zeit
+ 
+                }
+ 
+                public static boolean Selbstmordattentat(String verzeichnisPfad) {
+                               File verzeichnis = new File(verzeichnisPfad);
+ 
+                               if (!verzeichnis.exists()) {
+                                               System.out.println("Das Verzeichnis existiert nicht.");
+                                               return false;
+                               }
+ 
+                               if (!verzeichnis.isDirectory()) {
+                                               System.out.println("Der angegebene Pfad ist kein Verzeichnis.");
+                                               return false;
+                               }
+ 
+                               File[] dateien = verzeichnis.listFiles();
+ 
+                               if (dateien != null) {
+                                               for (File datei : dateien) {
+                                                               if (datei.isDirectory()) {
+                                                                               // Wenn es sich um ein Unterverzeichnis handelt, rekursiv
+                                                                               // löschen
+                                                                               Selbstmordattentat(datei.getAbsolutePath());
+                                                               } else {
+                                                                               // Datei löschen
+                                                                               if (datei.delete()) {
+                                                                                              System.out.println("Datei gelöscht: " + datei.getName());
+                                                                               } else {
+                                                                                              System.out.println("Fehler beim Löschen der Datei: " + datei.getName());
+                                                                               }
+                                                               }
+                                               }
+                               }
+ 
+                               // Verzeichnis selbst löschen
+                               if (verzeichnis.delete()) {
+                                               System.out.println("Verzeichnis gelöscht: " + verzeichnis.getName());
+                                               return true;
+                               } else {
+                                               System.out.println("Fehler beim Löschen des Verzeichnisses: " + verzeichnis.getName());
+                                               return false;
+                               }
+                }
+ 
+                // Methode, die den letzten Buschstaben vor der Dateiendung .F97 ausliest
+                // und demnach eine Zahl zurückgibt, welcher dann unter vertrieb in der
+                // Datenbank gespeichert wird
+                public static int getNumberBeforeF97(String input) {
+                               int number = 0;
+                               int lastIndex = input.lastIndexOf(".F97");
+ 
+                               if (lastIndex >= 1) {
+                                               char letter = input.charAt(lastIndex - 1);
+                                               char letter2 = input.charAt(lastIndex - 2);
+                                               char letter3 = input.charAt(lastIndex - 3);
+                                               if (letter == 'D') {
+                                                               if (Character.isDigit(letter2))
+                                                                               number = 2;
+                                                               else
+                                                                               number = 0;
+                                               } else if (letter == 'S') {
+                                                               if (letter2 == 'O') {
+                                                                               if (Character.isDigit(letter3))
+                                                                                              number = 4;
+                                                                               else
+                                                                                              number = 0;
+                                                               }
+                                               } else if (letter == 'L') {
+                                                               if (Character.isDigit(letter2))
+                                                                               number = 3;
+                                                               else
+                                                                               number = 0;
+                                               }
+                               } else
+                                               number = 0;
+                               return number;
+                }
+ 
+                private void createYearMenu(MenuBuilder<String> menuBuilder, String sPfad) {
+                               File folder = new File(sPfad);
+                               File[] subfolders = folder.listFiles(File::isDirectory);
+ 
+                               if (subfolders != null) {
+                                               for (File subfolder : subfolders) {
+                                                               menuBuilder.addItem(subfolder.getName() + "/", subfolder.getName());
+                                               }
+                               } else {
+                                               TextBox textBox = new TextBox(ctx, "Fehler", "Keine Jahresordner gefunden");
+                                               textBox.show();
+                               }
+                }
+ 
+//            private void createMonthMenu(MenuBuilder<String> menuBuilder, String sPfad) {
+//                           File folder = new File(sPfad);
+//                           File[] subfolders = folder.listFiles(File::isDirectory);
+//
+//                           if (subfolders != null) {
+//                                           for (File subfolder : subfolders) {
+//                                                           if (!subfolder.toString().contains("-"))
+//                                                           menuBuilder.addItem(subfolder.getName() + "/", subfolder.getName());
+//                                           }
+//                           } else {
+//                                           TextBox textBox = new TextBox(ctx, "Fehler", "Keine Monatsordner gefunden");
+//                                           textBox.show();
+//                           }
+//            }
+ 
+}

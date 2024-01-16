@@ -1,0 +1,242 @@
+package developer.hakan;
+ 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
+ 
+import abasklassen.HHFunc;
+import ajo.AbstractAjoAccess;
+import de.abas.erp.db.DbContext;
+import developer.hakan.PostData.ZPostgreJasper;
+import system.tools.CallJR;
+ 
+public class APOST extends AbstractAjoAccess {
+ //ließt Daten aus der PostgreSQL Datenbank aus und schriebt sie in ein Report
+      DbContext ctx = null;
+ 
+      @Override
+      public int run(String[] args) {
+            ctx = getDbContext();
+ 
+            String[] auswahl = new String[8];
+            int spaltenzahl = 0;
+            auswahl[0] = "Markise";
+            auswahl[1] = "Fenster";
+            auswahl[2] = "Rolladen";
+            auswahl[3] = "NFA";
+            auswahl[4] = "Stoff";
+            auswahl[5] = "MRF";
+            auswahl[6] = "DFR";
+            auswahl[7] = "HT";
+            String Produkt = HHFunc.Menu("Produkt", auswahl);
+ 
+            String Tabelle = "public.arch_martest";
+            if (Produkt == "Markise") {
+                  Tabelle = "public.arch_mar";
+                  spaltenzahl = 31;
+            } else if (Produkt == "Rolladen") {
+                  Tabelle = "public.arch_rol";
+                  spaltenzahl = 28;
+            } else if (Produkt == "NFA") {
+                  Tabelle = "public.arch_nfa";
+                  spaltenzahl = 33;
+            } else if (Produkt == "Stoff") {
+                  Tabelle = "public.arch_sto";
+                  spaltenzahl = 34;
+            } else if (Produkt == "MRF") {
+                  Tabelle = "public.arch_mrf";
+                  spaltenzahl = 38;
+            } else if (Produkt == "DFR") {
+                  Tabelle = "public.arch_dfr";
+                  spaltenzahl = 35;
+            } else if (Produkt == "HT") {
+                  Tabelle = "public.arch_ht";
+                  spaltenzahl = 35;
+            } else if (Produkt == "Fenster") {
+                  spaltenzahl = 55;
+                  Tabelle = "public.arch_fen";
+            } else {
+                  return 0;
+            } // Textbox
+ 
+            String Kommission = HHFunc.Eingabe("Kommission eingeben:");
+ 
+            if (!Kommission.matches("^(.*[0-9]){3,}.*[a-zA-Z].*$")) {
+                  // Textbox
+                  return 0;
+            }
+ 
+            try {
+                  this.retrieveData(ctx, Kommission, Tabelle, spaltenzahl);
+            } catch (Exception e) {
+                  // TODO Auto-generated catch block
+                  ctx.out().println(e.toString());
+            }
+ 
+            return 0;
+      }
+ 
+      private void retrieveData(DbContext ctx, String Kommission, String Tabelle, int spaltenzahl) throws Exception {
+ 
+            String connPost = "jdbc:postgresql://192.168.6.129:5432/postgres";
+            Connection conn = null;
+            Connection conn2 = null;
+            ctx.out().println("Programm Gestartet.");
+            ZPostgreJasper fuelljasper = null;
+            ArrayList<ZPostgreJasper> aljasp = new ArrayList<ZPostgreJasper>();
+            List<String> ueberschriften = new ArrayList<>();
+            List<String> inhalt = new ArrayList<>();
+            List<String> typ = new ArrayList<>();
+ 
+            try {
+                  Class.forName("org.postgresql.Driver");
+                  conn = DriverManager.getConnection(connPost, "postgres", "db2su");
+                  conn2 = DriverManager.getConnection(connPost, "postgres", "db2su");
+                  ctx.out().println("Zugriff auf Postgres.");
+ 
+                  // Annahme: Du möchtest alle Daten aus einer Tabelle namens
+                  String query = "SELECT * FROM " + Tabelle + " WHERE komm = '" + Kommission + "'";
+                  try (Statement statement = conn.createStatement(); ResultSet resultSet = statement.executeQuery(query)) {
+                        while (resultSet.next()) {
+ 
+                              ResultSetMetaData metaData = resultSet.getMetaData();
+                              // int columnCount = metaData.getColumnCount();
+ 
+                             
+                              aljasp.clear();
+                              ueberschriften.clear();
+ 
+                              // Ausgabe der Spaltennamen und Datentypen
+                              for (int i = 1; i <= spaltenzahl; i++) {
+                                   String columnName = metaData.getColumnName(i);
+                                   String columnType = metaData.getColumnTypeName(i);
+                                  
+                                   typ.add(columnType);
+                                   ueberschriften.add(columnName);
+ 
+                                   ctx.out().println("Spalte: " + columnName + ", Datentyp: " + columnType);
+                             
+ 
+                              }
+                              int i=0;
+                              for (String ueberschrift : ueberschriften){
+                                   if (typ.get(i).equals("timestamp")) {
+                                         Timestamp timestampValue = (Timestamp) resultSet.getObject(ueberschrift);
+                                         if (timestampValue != null) {
+                                               String columnValue = timestampValue.toString();
+                                               inhalt.add(columnValue);
+                                               ctx.out().println("Inhalt: " + columnValue);
+                                         } else {
+                                               // Handle null timestampValue
+                                               inhalt.add(null);
+                                               ctx.out().println("Inhalt: null");
+                                         }
+                                   } else {
+                                         Object columnObject = resultSet.getObject(ueberschrift);
+                                         if (columnObject != null) {
+                                               String columnValue = columnObject.toString();
+                                               inhalt.add(columnValue);
+                                               ctx.out().println("Inhalt: " + columnValue);
+                                         } else {
+                                               // Handle null columnObject
+                                               inhalt.add(null);
+                                               ctx.out().println("Inhalt: null");
+                                         }
+                                   }
+                                   i++;
+                              }
+                             
+                              fuellen(spaltenzahl, fuelljasper, ueberschriften, inhalt, aljasp);
+                              inhalt.clear();
+                             
+                        }
+                       
+                        // Close the ResultSet and Statement when done
+ 
+                  }catch (Exception e) {
+                        ctx.out().println(e.getMessage());
+                        for (StackTraceElement ste : e.getStackTrace()) {
+                              ctx.out().println(ste.toString());
+                        }
+                  }//fuellen(spaltenzahl, fuelljasper, ueberschriften, inhalt, aljasp);
+                 
+ 
+            } catch (ClassNotFoundException | SQLException e) {
+                  ctx.out().println(e.getMessage());
+                  for (StackTraceElement ste : e.getStackTrace()) {
+                        ctx.out().println(ste.toString());
+                  }
+            } finally {
+                  // Schließe die Verbindung
+                  if (conn2 != null) {
+                        conn2.close();
+                  }
+                  try {
+                        if (conn != null) {
+                              conn.close();
+                        }
+                  } catch (SQLException e) {
+                        e.printStackTrace();
+                  }
+            }
+      }
+ 
+      private void fuellen(int spaltenzahl, ZPostgreJasper fuelljasper, List<String> ueberschriften, List<String> felder, ArrayList<ZPostgreJasper> aljasp) {
+           
+            if(ueberschriften.size()<felder.size()){
+                  ctx.out().println("Dieser Fehler wurde noch nicht behoben!");
+            }
+           
+            String JFile = "/erp/abas/demo/win/jasper/layout/hhjasper/markisen/DBFtoRep.jrxml";
+            int zaehler = spaltenzahl / 6;
+            int durchl = 0;
+            for (int i = 0; i <= zaehler; i++) {
+                  fuelljasper = new ZPostgreJasper();
+ 
+                  int startIndex = i + durchl;
+                 
+                  if (startIndex < ueberschriften.size()) {
+                        fuelljasper.setUeberschrift1(ueberschriften.get(startIndex));
+                        fuelljasper.setField1(felder.get(startIndex));
+                  }
+ 
+                  if (startIndex + 1 < ueberschriften.size()) {
+                        fuelljasper.setUeberschrift2(ueberschriften.get(startIndex + 1));
+                        fuelljasper.setField2(felder.get(startIndex + 1));
+                  }
+ 
+                  if (startIndex + 2 < ueberschriften.size()) {
+                        fuelljasper.setUeberschrift3(ueberschriften.get(startIndex + 2));
+                        fuelljasper.setField3(felder.get(startIndex + 2));
+                  }
+ 
+                  if (startIndex + 3 < ueberschriften.size()) {
+                        fuelljasper.setUeberschrift4(ueberschriften.get(startIndex + 3));
+                        fuelljasper.setField4(felder.get(startIndex + 3));
+                  }
+ 
+                  if (startIndex + 4 < ueberschriften.size()) {
+                        fuelljasper.setUeberschrift5(ueberschriften.get(startIndex + 4));
+                        fuelljasper.setField5(felder.get(startIndex + 4));
+                  }
+ 
+                  if (startIndex + 5 < ueberschriften.size()) {
+                        fuelljasper.setUeberschrift6(ueberschriften.get(startIndex + 5));
+                        fuelljasper.setField6(felder.get(startIndex + 5));
+                  }
+                       
+ 
+                  // Add the filled P2Rjasp instance to the list
+                  aljasp.add(fuelljasper);
+                  durchl = durchl + 5;
+            }
+            CallJR.showReport(ctx, JFile, aljasp);
+      }
+ 
+}
